@@ -97,12 +97,33 @@ osThreadId_t ResetGlobalHandle;
 const osThreadAttr_t ResetGlobal_attributes = {
   .name = "ResetGlobal",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityIdle,
 };
 /* Definitions for DebounceTask */
 osThreadId_t DebounceTaskHandle;
 const osThreadAttr_t DebounceTask_attributes = {
   .name = "DebounceTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for button1On */
+osThreadId_t button1OnHandle;
+const osThreadAttr_t button1On_attributes = {
+  .name = "button1On",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for Semaphore_Toggl */
+osThreadId_t Semaphore_TogglHandle;
+const osThreadAttr_t Semaphore_Toggl_attributes = {
+  .name = "Semaphore_Toggl",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for Mutex_AddDash */
+osThreadId_t Mutex_AddDashHandle;
+const osThreadAttr_t Mutex_AddDash_attributes = {
+  .name = "Mutex_AddDash",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
@@ -115,6 +136,11 @@ const osTimerAttr_t SW_Timer_7Seg_attributes = {
 osMutexId_t UpDownMutexHandle;
 const osMutexAttr_t UpDownMutex_attributes = {
   .name = "UpDownMutex"
+};
+/* Definitions for Mutex_dash */
+osMutexId_t Mutex_dashHandle;
+const osMutexAttr_t Mutex_dash_attributes = {
+  .name = "Mutex_dash"
 };
 /* Definitions for Button_1_Semaphore */
 osSemaphoreId_t Button_1_SemaphoreHandle;
@@ -165,6 +191,9 @@ void Mutex_CountDownTask(void *argument);
 void UpdateGlobDisplayProcess(void *argument);
 void ResetGlobalTask(void *argument);
 void StartDebounce(void *argument);
+void Turn_LED_D1_On(void *argument);
+void Semaphore_Toggle_D3(void *argument);
+void Mutex_Add_Dash(void *argument);
 void SW_Timer_Countdown(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -223,6 +252,9 @@ int main(void)
   /* creation of UpDownMutex */
   UpDownMutexHandle = osMutexNew(&UpDownMutex_attributes);
 
+  /* creation of Mutex_dash */
+  Mutex_dashHandle = osMutexNew(&Mutex_dash_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -280,6 +312,15 @@ int main(void)
 
   /* creation of DebounceTask */
   DebounceTaskHandle = osThreadNew(StartDebounce, NULL, &DebounceTask_attributes);
+
+  /* creation of button1On */
+  button1OnHandle = osThreadNew(Turn_LED_D1_On, NULL, &button1On_attributes);
+
+  /* creation of Semaphore_Toggl */
+  Semaphore_TogglHandle = osThreadNew(Semaphore_Toggle_D3, NULL, &Semaphore_Toggl_attributes);
+
+  /* creation of Mutex_AddDash */
+  Mutex_AddDashHandle = osThreadNew(Mutex_Add_Dash, NULL, &Mutex_AddDash_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -429,8 +470,8 @@ static void MX_USART2_UART_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -513,39 +554,36 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-	{
-	//BaseType_t pxH ;
-	uint32_t pxH = 0 ;
-	// All three buttons generate GPIO  interrupts
-	switch(GPIO_Pin)
-		{
-		case Button_1_Pin:
-			pxH = 1;
-			xTaskNotifyFromISR(DebounceTaskHandle, B1, eSetBits, (BaseType_t*) pxH );
-			break  ;
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-		case Button_2_Pin:
-			pxH = 2;
-			xTaskNotifyFromISR(DebounceTaskHandle, B2, eSetBits, (BaseType_t*) pxH );
-			break;
+    switch (GPIO_Pin)
+    {
+    case Button_1_Pin:
+        xTaskNotifyFromISR(DebounceTaskHandle, B1, eSetBits,
+                           &xHigherPriorityTaskWoken);
+        break;
 
-		case Button_3_Pin:
-			pxH = 3;
-			xTaskNotifyFromISR(DebounceTaskHandle, B3, eSetBits, (BaseType_t*) pxH );
-			// srand((unsigned) uwTick );
-			// osSemaphoreRelease(Button_3_SemaphoreHandle);
-			break;
-		}
+    case Button_2_Pin:
+        xTaskNotifyFromISR(DebounceTaskHandle, B2, eSetBits,
+                           &xHigherPriorityTaskWoken);
+        break;
 
-	}
+    case Button_3_Pin:
+        xTaskNotifyFromISR(DebounceTaskHandle, B3, eSetBits,
+                           &xHigherPriorityTaskWoken);
+        break;
+    }
 
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
 
 
 
@@ -637,7 +675,7 @@ void SW_Timer_Task(void *argument)
 	if (osTimerIsRunning(SW_Timer_7SegHandle))
 		osTimerStop(SW_Timer_7SegHandle );
 	else
-		osTimerStart(SW_Timer_7SegHandle , 200);
+		osTimerStart(SW_Timer_7SegHandle , 1000);
     osDelay(1);
   }
   /* USER CODE END SW_Timer_Task */
@@ -779,6 +817,73 @@ void StartDebounce(void *argument)
   /* USER CODE END StartDebounce */
 }
 
+/* USER CODE BEGIN Header_Turn_LED_D1_On */
+/**
+* @brief Function implementing the button1On thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Turn_LED_D1_On */
+void Turn_LED_D1_On(void *argument)
+{
+  /* USER CODE BEGIN Turn_LED_D1_On */
+  /* Infinite loop */
+  for(;;)
+  {
+	  osSemaphoreAcquire(Button_1_SemaphoreHandle, osWaitForever);
+
+	  // Toggle LED D4
+	  HAL_GPIO_TogglePin(LED_D4_GPIO_Port, LED_D4_Pin);
+  }
+  /* USER CODE END Turn_LED_D1_On */
+}
+
+/* USER CODE BEGIN Header_Semaphore_Toggle_D3 */
+/**
+* @brief Function implementing the Semaphore_Toggl thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Semaphore_Toggle_D3 */
+void Semaphore_Toggle_D3(void *argument)
+{
+  /* USER CODE BEGIN Semaphore_Toggle_D3 */
+  /* Infinite loop */
+  for(;;)
+  {
+	  osSemaphoreAcquire(Button_1_SemaphoreHandle, osWaitForever);
+
+	  // Toggle LED D4
+	  HAL_GPIO_TogglePin(LED_D3_GPIO_Port, LED_D3_Pin);
+  }
+  /* USER CODE END Semaphore_Toggle_D3 */
+}
+
+/* USER CODE BEGIN Header_Mutex_Add_Dash */
+/**
+* @brief Function implementing the Mutex_AddDash thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Mutex_Add_Dash */
+void Mutex_Add_Dash(void *argument)
+{
+  /* USER CODE BEGIN Mutex_Add_Dash */
+  /* Infinite loop */
+  for(;;)
+  {
+	  /* This doesn't change the value, it just clears the display  */
+	  /* If asked to display a negative number, the function displays a "--"
+	  */
+	  osMutexWait(UpDownMutexHandle,100000);
+	  MultiFunctionShield_Display_Two_Digits(-1);
+	  osDelay(200);
+	  osMutexRelease(UpDownMutexHandle);
+	  osDelay(2);
+  }
+  /* USER CODE END Mutex_Add_Dash */
+}
+
 /* SW_Timer_Countdown function */
 void SW_Timer_Countdown(void *argument)
 {
@@ -811,7 +916,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM3) {
+  if (htim->Instance == TIM3)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -837,8 +943,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

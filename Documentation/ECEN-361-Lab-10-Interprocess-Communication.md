@@ -69,12 +69,12 @@ debounce wait, that then starts the task(s):
 (Either use the GUI -- *Under Middleware/FreeRTOS* or manually in the code) that will toggle LED_D4 each time Button_1 is pressed. <br>
 <br>
 <mark>1. How did your task ‘wait’ for the debounced button? <br>
-_______________________________________________________ </mark>
+So the task 'waits' because once we press the button in the callback it has the debounce task which waits 30 ms and then after that time it then releases the semaphore</mark>
 <br>
 > <br><br>
 
 ><mark>2.)	How long is the time between the button interrupt coming in and it being enabled again? <br>
-_______________________________________________________ </mark>
+30 ms</mark>
 ><br>
 > <br>
 
@@ -83,19 +83,18 @@ You’re given the framework of a second task (Semaphore_Toggle_D3) -- <p>
 >Modify this so that it that also waits for the same Button_1_Semaphore.  It should then toggle LED_D3 each time Button_1 is pressed.  Note that they both have been created with the same Priority..<br><br>
 ><mark>3.)<br>
 >><mark>[x] Yes, I modified and got it working and tested it by<br>
->>_________________________________________________________________________________<br><br>
-    [ ] No, I didn't do this because  _______________________________________________________ </mark>
+>>creating the task and then once I created the task, I added the code that would allow the LED_D3 to toggle.<br><br></mark>
 ><br>
 ><br>
 > </p>
 
 ><mark> <br>
 4.)	Do both of (D4 and D3) toggle with a single button press?  Describe the behavior?  <br>
->_________________________________________________________________________________<br><br>
+>No if D3 is toggled then when I press the button again D4 will toggle and vice versa with D4.<br><br>
 
 ><mark> 5.)	Now change one of the priorities of these two tasks, re-compile,  and re-run. <br>
 How has the behavior changed?
->_________________________________________________________________________________<br><br>
+>I set D4 to low priority and because they are not on the same priority they do not take turn but rather D3 is the only LED that toggles.<br><br>
 
 <mark>
 
@@ -153,19 +152,19 @@ current count.
 >
 ><br>
 >7.)	Comment on the Up/Down/ ”—” display that you see.  <br><br>
-><mark>___________________________________________________________________________________________________________<br><br><p>
+><mark>They are all the same priority so they are all going one after the other fighting to be the only one going so the numbers are tweaking along with the dashes.<br><br><p>
 
 
 >8.)	Is there a ‘priority’ associated with the Mutex?  If so, how can it be changed?
 ><br>  
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>Yes there is priority as we see the mutex uses tasks which in the GUI we can change which one has the supreme priority overall.<br><br>
 <p>
 
 ><br>
 >9.)	Button_3 resets the mutex-protected global variable to “50.”  It too, has to wait for the mutex to be granted.<br>
 > <mark> Change the priority of the Reset to be osPriorityIdle.  This is the lowest priority available.<br>
 ><br> Did you see any effect on the ability of Button_3 to reset the count?<br><br>
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>There is no disability to the reset however it does take longer to restart the tasks.<br><br>
 >
 ---
 <!--------------------------------------------------------------------------------->
@@ -194,14 +193,16 @@ display digit.
 >Verify that the decrementing count changes accordingly.
 >
 >><mark>[x] Yes, I modified and got it working and tested it by<br>
->>_________________________________________________________________________________<br><br>
-    [ ] No, I didn't do this because  _______________________________________________________ </mark>
+>>looking at the left of the 7 seg display I can see that it is now counting much slower because from 200 I switched it to 1000<br><br></mark>
 >
 >This timer was created via the GUI  (.IOC file).  It’s type is *“osTimerPeriodic”* which means it repeats over and over.<br><br>
 What other options can a Software Timer take to change its Type and operation? <br>
-><mark>10.)  ___________________________________________________________________________________________________________<br><br>
+><mark>10.)  So you can either have it be periodic which it is currently at or you can have it count once everytime you press the button.<br><br>
 
-
+<mark>>11).    The debounce for the switches here used an osDelay() call (non-blocking).  Is there any advantage to using a SWTimer here instead?<br>
+Explain why or why not?
+>
+><mark>Yes there would be a benefit here as it would be just as fast if not faster and it would be non-blocking. Also we would not need to make a task<br><br>
 
 
 <!--------------------------------------------------------------------------------->
@@ -223,7 +224,7 @@ What other options can a Software Timer take to change its Type and operation? <
 >3.	The debounce for the switches here used a uwDelay() non-blocking call.  Is there any advantage to using a SWTimer here instead?<br>
 > Explain why or why not?
 >
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>In this lab there would not be any real benefit because it would just do the same thing and they are both non-blocking calls. So it doesn't seem like there is much benefit here.<br><br>
 
 >
 >4.	Any other relevant uses for semaphores, mutexes, or S/W timers ?   Describe what you’ve done and why?
